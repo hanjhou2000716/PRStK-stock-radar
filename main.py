@@ -24,8 +24,8 @@ TW_POOL = [
     "2345.TW", "2301.TW", "2408.TW", "3008.TW", "1519.TW", "2615.TW",
 ]
 MARKET_NAMES = {
-    "^TWII": "�啗��䭾�", "^TWOII": "�啗�瑹�眺", "006208.TW": "006208", "00685L.TW": "00685L",
-    "2330.TW": "�啁���", "^DJI": "�梶�", "^IXIC": "蝝齿鱻�𥪜�", "^SOX": "鞎餃�",
+    "^TWII": "台股加權", "^TWOII": "台股櫃買", "006208.TW": "006208", "00685L.TW": "00685L",
+    "2330.TW": "台積電", "^DJI": "道瓊", "^IXIC": "納斯達克", "^SOX": "費半",
     "VOO": "VOO", "VT": "VT", "SPYG": "SPYG", "QQQM": "QQQM", "TSM": "TSM",
 }
 
@@ -42,13 +42,13 @@ def breakout_tag(close):
         return ""
     now, history = close.iloc[-1], close.iloc[:-1]
     if now > history.iloc[-20:].max():
-        return "�� ��20憭拇鰵擃�"
+        return "👑 創20天新高"
     if now < history.iloc[-20:].min():
-        return "�� ��20憭拇鰵雿�"
+        return "🌀 創20天新低"
     if now > history.iloc[-5:].max():
-        return "�糃 ��5憭拇鰵擃�"
+        return "🌳 創5天新高"
     if now < history.iloc[-5:].min():
-        return "��� ��5憭拇鰵雿�"
+        return "❄️ 創5天新低"
     return ""
 
 
@@ -134,7 +134,7 @@ def scan_price_action(symbols, names):
         if not (is_spring or is_reclaim):
             continue
         vol_ratio = current["Volume"] / avg_vol if avg_vol else 1
-        setup = "�炊 �游�蝧�" if is_spring else "�㴓 鈭埝��噼萱"
+        setup = "🪤 破底翻" if is_spring else "🎯 互換回踩"
         records.append({"name": stock_name(symbol, names), "code": symbol.split(".")[0], "price": round(as_float(current["Close"]), 2),
                         "score": round(min(99.9, 80 + vol_ratio * 4.5), 1), "tag": setup,
                         "turnover": as_float(current["Close"] * current["Volume"])})
@@ -155,7 +155,7 @@ def scan_resonance(symbols, names):
         if sweep and (current["Volume"] > vol_ma * 1.2 or reversal) and current["Close"] >= ma60:
             score = min(99.9, 60 + (current["Close"] / ma60 - 1) * 300 + current["Volume"] / vol_ma * 10)
             records.append({"name": stock_name(symbol, names), "code": symbol.split(".")[0], "price": round(as_float(current["Close"]), 2),
-                            "score": round(score, 1), "tag": "�𨥈� 瘚���抒枤畾�"})
+                            "score": round(score, 1), "tag": "⚛️ 流動性獵殺"})
     return sorted(records, key=lambda item: item["score"], reverse=True)[:10]
 
 
@@ -171,7 +171,7 @@ def scan_value(symbols, names):
             price = as_float(info.get("currentPrice", info.get("regularMarketPrice")))
             if roe > 17 and payout > 20 and price:
                 records.append({"name": stock_name(symbol, names), "code": symbol.split(".")[0], "price": round(price, 2),
-                                "score": round(min(99.5, roe*.6+payout*.4), 1), "tag": f"PER {pe:.1f}" if pe else "PER ��"})
+                                "score": round(min(99.5, roe*.6+payout*.4), 1), "tag": f"PER {pe:.1f}" if pe else "PER —"})
         except Exception:
             continue
     return sorted(records, key=lambda item: item["score"], reverse=True)[:5]
@@ -196,15 +196,15 @@ def macro_data(market):
     except Exception:
         vix = 15
     if market != "tw":
-        return [{"label": "蝢舘� VIX", "value": f"{vix:.2f}"}]
+        return [{"label": "美股 VIX", "value": f"{vix:.2f}"}]
     try:
         twii = yf.Ticker("^TWII").history(period="180d")["Close"].dropna()
         ma = twii.rolling(125).mean().iloc[-1]
         score = min(100, max(0, 50 + (twii.iloc[-1]/ma-1)*500))
     except Exception:
         score = 50
-    state = "璆萄漲�鞉�" if score < 10 else "�鞉�" if score <= 25 else "銝剔� / 璈��" if score <= 50 else "鞎芸帚" if score <= 75 else "璆萄漲鞎芸帚"
-    return [{"label": "�啗��鞉剏��痕憍�", "value": f"{score:.1f} 繚 {state}"}, {"label": "VIX", "value": f"{vix:.2f}"}]
+    state = "極度恐慌" if score < 10 else "恐慌" if score <= 25 else "中立 / 機會" if score <= 50 else "貪婪" if score <= 75 else "極度貪婪"
+    return [{"label": "台股恐懼與貪婪", "value": f"{score:.1f} · {state}"}, {"label": "VIX", "value": f"{vix:.2f}"}]
 
 
 def anue_news(keywords):
@@ -221,20 +221,20 @@ def build_report(market):
     names = tw_stock_universe() if market == "tw" else {symbol: symbol for symbol in TW_POOL}
     symbols = list(names)
     report = {
-        "title": "PRStK | 蝔𣈯��文��蠘汗", "market": "�啗�" if market == "tw" else "蝢舘�",
+        "title": "PRStK | 稜量盤後速覽", "market": "台股" if market == "tw" else "美股",
         "date": datetime.now().astimezone().strftime("%m/%d"),
         "updatedAt": datetime.now().astimezone().strftime("%m/%d %H:%M"),
         "marketCards": market_snapshot(market),
         "strategies": [
-            {"id": "momentum", "title": "�㴓 �閗��蹱�", "subtitle": "頞典𨋍��㮾撠滚撥摨西�蝒�聦�閗�", "items": scan_momentum(symbols, names)},
-            {"id": "resonance", "title": "�𨥈� 銝厩雁�望𥲤", "subtitle": "瘚���扳��文���撥�Ｗ���", "items": scan_resonance(symbols, names)},
-            {"id": "price-action", "title": "�𣺿 Price Action", "subtitle": "�游�蝧餉�鈭埝��噼萱蝯鞉�", "items": scan_price_action(symbols, names)},
-            {"id": "value", "title": "��儭� �孵�潭�鞈�", "subtitle": "ROE����舐�����寧祟��", "items": scan_value(symbols, names)},
+            {"id": "momentum", "title": "🎯 動能狙擊", "subtitle": "趨勢、相對強度與突破動能", "items": scan_momentum(symbols, names)},
+            {"id": "resonance", "title": "⚛️ 三維共振", "subtitle": "流動性掃盤後的強勢回收", "items": scan_resonance(symbols, names)},
+            {"id": "price-action", "title": "💶 Price Action", "subtitle": "破底翻與互換回踩結構", "items": scan_price_action(symbols, names)},
+            {"id": "value", "title": "🏛️ 價值投資", "subtitle": "ROE、配息率與評價篩選", "items": scan_value(symbols, names)},
         ],
         "macro": macro_data(market),
-        "news": anue_news(["�啁���", "�𠰴�擃�", "蝘烐�", "憭抒𥿢"]),
-        "disclaimer": "�砍�摰寧�蝟餌絞�硋��渲�閮𦠜㟲���銝齿��鞉�鞈�遣霅堆��閗��滩��芾�閰蓥摯憸券麬��",
-        "closing": "瘥誩予�賣糓憟賣����憭抬����憟賭��潛��其��𤏸澈銝𠺪�",
+        "news": anue_news(["台積電", "半導體", "科技", "大盤"]),
+        "disclaimer": "本內容為系統化市場資訊整理，不構成投資建議；投資前請自行評估風險。",
+        "closing": "每天都是好棒的一天！會有好事發生在你我身上！",
     }
     return report
 
@@ -249,8 +249,8 @@ def send_mini_app(report):
         print("Telegram skipped: set TG_TOKEN, TG_CHAT_IDS and WEB_APP_URL in GitHub Secrets.")
         return
     url = f"{WEB_APP_URL}/?v={datetime.now().strftime('%Y%m%d%H%M')}"
-    text = f"�篅�剏 <b>PRStK嚚𦦵��讐𥿢敺屸�蠘汗</b>嚗ùreport['date']}嚗声n鞈��撌脫凒�堆�暺墧�銝𧢲䲮�厰��亦�摰峕㟲撣�聦��銵冽踎��"
-    keyboard = {"inline_keyboard": [[{"text": "�� �见�蝔𣈯��文��蠘汗", "web_app": {"url": url}}]]}
+    text = f"🇹🇼 <b>PRStK｜稜量盤後速覽</b>（{report['date']}）\n資料已更新，點擊下方按鈕查看完整市場儀表板。"
+    keyboard = {"inline_keyboard": [[{"text": "📊 開啟稜量盤後速覽", "web_app": {"url": url}}]]}
     for chat_id in SUBSCRIBERS:
         try:
             response = requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage", json={
@@ -270,4 +270,3 @@ if __name__ == "__main__":
     write_report(final_report)
     send_mini_app(final_report)
     print(f"Done: {REPORT_PATH}")
-解釋
