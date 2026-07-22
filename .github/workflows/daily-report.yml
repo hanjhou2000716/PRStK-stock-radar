@@ -1,2 +1,62 @@
+name: Build and deploy PRStK Mini App
+
 on:
   workflow_dispatch:
+  schedule:
+    # 台灣時間平日 16:15（UTC 08:15）
+    - cron: "15 8 * * 1-5"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: prstk-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Build report and send Telegram Mini App message
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_IDS: ${{ secrets.TG_CHAT_IDS }}
+          WEB_APP_URL: ${{ secrets.WEB_APP_URL }}
+        run: python main.py tw
+
+      - name: Copy banner images
+        run: |
+          mkdir -p docs/assets
+          cp PRStK-Remove.png docs/assets/PRStK-Remove.png
+          cp D.inv-removebg-preview.png docs/assets/D.inv-removebg-preview.png
+
+      - name: Commit latest report data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/report.json
+          git diff --cached --quiet || git commit -m "chore: refresh post-market report"
+          git push
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
