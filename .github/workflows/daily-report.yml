@@ -1,11 +1,11 @@
-name: Build and deploy PRStK Mini App
-
 on:
   workflow_dispatch:
-  schedule:
-    # 台灣時間平日 16:15（UTC 08:15）
-    - cron: "15 8 * * 1-5"
 
+  repository_dispatch:
+    types: [trigger-radar]
+
+  schedule:
+    - cron: "15 8 * * 1-5"
 permissions:
   contents: write
   pages: write
